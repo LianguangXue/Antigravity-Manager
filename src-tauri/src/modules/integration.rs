@@ -843,21 +843,11 @@ pub(crate) fn write_to_system_keyring(account: &crate::models::Account) -> Resul
 }
 
 /// 辅助方法：向指定目录同步写入本地文件凭据
-fn write_to_file_credentials_to_dir(
-    gemini_dir: &std::path::Path,
-    account: &crate::models::Account,
-    sync_agy_cli: bool,
-) -> Result<(), String> {
-    if !gemini_dir.exists() {
-        if let Err(e) = std::fs::create_dir_all(gemini_dir) {
-            crate::modules::logger::log_warn(&format!(
-                "[Desktop] Failed to create .gemini directory: {}",
-                e
-            ));
-            return Err(format!("Failed to create .gemini directory: {}", e));
-        }
-    }
-
+/// Build the Antigravity file-based OAuth credential JSON.
+///
+/// Shared by the local fallback files and remote SSH hosts so both sides always
+/// receive the exact same credential shape.
+pub fn build_file_token_json(account: &crate::models::Account) -> Result<String, String> {
     let expiry_secs = if account.token.expiry_timestamp > 10_000_000_000 {
         account.token.expiry_timestamp / 1000
     } else {
@@ -900,11 +890,32 @@ fn write_to_file_credentials_to_dir(
         id_token: account.token.id_token.clone(),
     };
 
+    serde_json::to_string_pretty(&agy_token)
+        .map_err(|e| format!("Failed to serialize file credential: {}", e))
+}
+
+fn write_to_file_credentials_to_dir(
+    gemini_dir: &std::path::Path,
+    account: &crate::models::Account,
+    sync_agy_cli: bool,
+) -> Result<(), String> {
+    if !gemini_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(gemini_dir) {
+            crate::modules::logger::log_warn(&format!(
+                "[Desktop] Failed to create .gemini directory: {}",
+                e
+            ));
+            return Err(format!("Failed to create .gemini directory: {}", e));
+        }
+    }
+
+    let agy_json = build_file_token_json(account)?;
+
     // 1. 同步写入 Standalone / IDE 语言服务原生降级凭据: ~/.gemini/jetski-standalone-oauth-token
     // 当系统 Keyring 不可用或超时时，agy 语言服务以此文件作为首要回退
     let standalone_token_path = gemini_dir.join("jetski-standalone-oauth-token");
-    if let Ok(standalone_json_str) = serde_json::to_string_pretty(&agy_token) {
-        if let Err(e) = std::fs::write(&standalone_token_path, &standalone_json_str) {
+    {
+        if let Err(e) = std::fs::write(&standalone_token_path, &agy_json) {
             crate::modules::logger::log_warn(&format!(
                 "[Desktop] Failed to write jetski-standalone-oauth-token: {}",
                 e
@@ -940,8 +951,8 @@ fn write_to_file_credentials_to_dir(
         }
 
         let agy_token_path = agy_cli_dir.join("antigravity-oauth-token");
-        if let Ok(agy_json_str) = serde_json::to_string_pretty(&agy_token) {
-            if let Err(e) = std::fs::write(&agy_token_path, agy_json_str) {
+        {
+            if let Err(e) = std::fs::write(&agy_token_path, &agy_json) {
                 crate::modules::logger::log_warn(&format!(
                     "[Desktop] Failed to write antigravity-oauth-token: {}",
                     e

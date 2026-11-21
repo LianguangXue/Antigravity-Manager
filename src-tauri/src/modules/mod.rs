@@ -25,6 +25,7 @@ pub mod proxy_db;
 pub mod quota;
 pub mod scheduler;
 pub mod security_db;
+pub mod ssh_remote;
 pub mod startup_quiet;
 pub mod startup_refresh;
 pub mod token_stats;

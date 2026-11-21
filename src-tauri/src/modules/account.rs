@@ -3645,6 +3645,25 @@ pub async fn switch_account(
     // 3. Execute platform-specific system integration (Close proc, Inject DB, Start proc, etc.)
     integration.on_account_switch(&account, target_ide).await?;
 
+    // 3.5 Remote SSH sync: remote language servers keep their own credential
+    // file, so push the fresh credential and stop their server. The client then
+    // starts a new server (after a restart or manual reconnect) that reads it.
+    // Related: #3886, #3887, #525.
+    let ssh_remote_config = crate::modules::config::load_app_config()
+        .map(|config| config.ssh_remote)
+        .unwrap_or_default();
+    if ssh_remote_config.enabled
+        && !crate::modules::integration::is_acp_target(target_ide)
+        && target_ide != Some("agy")
+    {
+        let results =
+            crate::modules::ssh_remote::sync_after_switch(&account, &ssh_remote_config).await;
+        let any_pushed = results.iter().any(|(_, result)| result.is_ok());
+        if any_pushed && ssh_remote_config.restart_client {
+            crate::modules::ssh_remote::restart_local_client().await;
+        }
+    }
+
     // 4. Update tool internal state
     set_current_account_id_with_target(account_id, target_ide)?;
 

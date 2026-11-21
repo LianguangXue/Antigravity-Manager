@@ -1,0 +1,97 @@
+name: Build Custom (SSH Remote Sync)
+
+# Personal fork build: produces an unsigned Windows NSIS installer and publishes
+# it as a public prerelease so it can be downloaded without GitHub auth.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "feat/ssh-remote"
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-2025
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri"
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install frontend dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Disable updater artifacts without signing key
+        shell: pwsh
+        run: |
+          $configPath = "src-tauri/tauri.conf.json"
+          $config = Get-Content -Raw $configPath | ConvertFrom-Json
+          $config.bundle.createUpdaterArtifacts = $false
+          $config | ConvertTo-Json -Depth 32 | Set-Content -Path $configPath -Encoding UTF8
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri Windows NSIS Installer
+        run: npm run tauri build -- --bundles nsis
+
+      - name: Collect installers
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-artifacts | Out-Null
+          $nsisExes = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis/*.exe"
+          if ($nsisExes.Count -eq 0) {
+            $nsisExes = Get-ChildItem -Path "src-tauri/target/*/release/bundle/nsis/*.exe"
+          }
+          foreach ($f in $nsisExes) {
+            Copy-Item -Path $f.FullName -Destination "dist-artifacts/"
+          }
+          Get-ChildItem -Path "dist-artifacts" | ForEach-Object { Write-Host " - $($_.Name) ($($_.Length) bytes)" }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Antigravity-Manager-SSH-Remote
+          path: dist-artifacts/*
+          retention-days: 30
+
+      - name: Publish prerelease
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          tag: custom-${{ github.run_number }}
+          name: "Custom build (SSH Remote Sync) #${{ github.run_number }}"
+          body: |
+            Personal build with remote SSH account sync (#3886, #3887, #525).
+
+            Changes:
+            - Push the switched account's file credential to configured SSH hosts.
+            - Stop the remote language server so the client starts it with the new credential.
+            - Optional automatic client restart so Remote-SSH windows reconnect.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "dist-artifacts/*"
+          artifactErrorsFailBuild: false
+          replacesArtifacts: true
+          prerelease: true
+          makeLatest: false

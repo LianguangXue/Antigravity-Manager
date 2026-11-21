@@ -317,7 +317,14 @@ export interface ClassicAutoSwitchConfig {
     monitored_models: string[];
 }
 
+export interface SshRemoteConfig {
+    enabled: boolean;
+    hosts: string[];
+    restart_client: boolean;
+}
+
 export interface AppConfig {
+    ssh_remote?: SshRemoteConfig;
     language: string;
     theme: string;
     auto_refresh: boolean;
