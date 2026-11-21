@@ -82,6 +82,11 @@ export async function switchAccount(accountId: string, targetIde?: string): Prom
     return await invoke('switch_account', { accountId, targetIde });
 }
 
+/** Switch only the configured remote SSH hosts; the local account stays unchanged. */
+export async function switchSshOnly(accountId: string): Promise<string> {
+    return await invoke('switch_ssh_only', { accountId });
+}
+
 export async function fetchAccountQuota(accountId: string): Promise<QuotaData> {
     return await invoke('fetch_account_quota', { accountId });
 }

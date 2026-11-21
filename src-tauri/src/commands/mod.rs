@@ -20,6 +20,9 @@ pub mod user_token;
 pub mod patch;
 pub use patch::*;
 
+// 导出远程 SSH 联动命令
+pub mod ssh_remote;
+
 /// 列出所有账号
 #[tauri::command]
 pub async fn list_accounts(

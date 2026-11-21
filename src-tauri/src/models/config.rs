@@ -60,6 +60,53 @@ pub struct AppConfig {
     pub classic_auto_switch: ClassicAutoSwitchConfig, // [NEW] 经典款配额自动热切换配置
     #[serde(default = "default_tray_click_action")]
     pub tray_click_action: String, // [NEW] 托盘左键点击行为: "mini" | "main"
+    /// Account sync for remote SSH development hosts (Antigravity Hub / IDE Remote-SSH).
+    /// Related: #3886, #3887, #525
+    #[serde(default)]
+    pub ssh_remote: SshRemoteConfig,
+}
+
+/// Remote SSH development account-sync configuration.
+///
+/// Remote Antigravity language servers keep their own credential file
+/// (`~/.gemini/jetski-standalone-oauth-token`) on the SSH host, so a local
+/// account switch does not reach them. When enabled, every local switch also
+/// pushes the selected account's file credential to the configured hosts and
+/// stops their language server so the client can start it again with the new
+/// credential.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SshRemoteConfig {
+    /// Whether remote SSH account sync is enabled.
+    #[serde(default)]
+    pub enabled: bool,
+    /// SSH host aliases (as defined in `~/.ssh/config`).
+    #[serde(default)]
+    pub hosts: Vec<String>,
+    /// Restart the local Antigravity client after a switch so its SSH windows
+    /// reconnect automatically. When false, only the remote server is stopped
+    /// and the user reconnects manually.
+    #[serde(default = "default_ssh_restart_client")]
+    pub restart_client: bool,
+}
+
+fn default_ssh_restart_client() -> bool {
+    true
+}
+
+impl SshRemoteConfig {
+    pub fn new() -> Self {
+        Self {
+            enabled: false,
+            hosts: Vec::new(),
+            restart_client: true,
+        }
+    }
+}
+
+impl Default for SshRemoteConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 fn default_tray_click_action() -> String {
@@ -297,6 +344,7 @@ impl AppConfig {
             auto_switch_classic_depleted: false,
             classic_auto_switch: ClassicAutoSwitchConfig::default(),
             tray_click_action: default_tray_click_action(),
+            ssh_remote: SshRemoteConfig::default(),
         }
     }
 }

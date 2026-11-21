@@ -6,6 +6,7 @@ import {
     Blocks,
     Terminal,
     ArrowRightLeft,
+    Server,
     Tag,
     Sparkles,
     Smartphone,
@@ -27,7 +28,7 @@ export interface AccountActionsModalProps {
     isOpen: boolean;
     onClose: () => void;
     account: Account;
-    onSwitch: (targetIde: 'classic' | 'ide' | 'agy' | 'acp') => void;
+    onSwitch: (targetIde: 'classic' | 'ide' | 'agy' | 'acp' | 'ssh') => void;
     onWarmup?: () => void;
     onViewDevice: () => void;
     onViewDetails: () => void;
@@ -294,6 +295,29 @@ export default function AccountActionsModal({
                                             </div>
                                             <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 whitespace-normal break-words leading-tight">
                                                 {t('accounts.actions_modal.clients.classic_desc')}
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    {/* SSH remote hosts only */}
+                                    <button
+                                        disabled={isSwitchDisabled}
+                                        onClick={() => onSwitch('ssh')}
+                                        className={`flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-base-200 transition-all text-left group ${
+                                            isSwitchDisabled
+                                                ? 'opacity-50 cursor-not-allowed bg-gray-50/50 dark:bg-base-200/30'
+                                                : 'hover:border-cyan-500 dark:hover:border-cyan-500 hover:bg-cyan-50/40 dark:hover:bg-cyan-500/10'
+                                        }`}
+                                    >
+                                        <div className="p-2 rounded-lg bg-cyan-50 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-400 group-hover:scale-105 transition-transform flex-shrink-0">
+                                            <Server size={18} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-semibold text-gray-900 dark:text-base-content whitespace-normal break-words leading-snug">
+                                                {t('accounts.actions_modal.clients.ssh', 'SSH 远程')}
+                                            </div>
+                                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 whitespace-normal break-words leading-tight">
+                                                {t('accounts.actions_modal.clients.ssh_desc', '仅切换 SSH 主机账号，本地账号保持不变')}
                                             </div>
                                         </div>
                                     </button>

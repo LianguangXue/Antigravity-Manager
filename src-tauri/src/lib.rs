@@ -873,6 +873,12 @@ pub fn run() {
             commands::load_config,
             commands::get_config,
             commands::save_config,
+            // Remote SSH sync commands (#3886, #3887, #525)
+            commands::ssh_remote::get_ssh_remote_config,
+            commands::ssh_remote::save_ssh_remote_config,
+            commands::ssh_remote::list_ssh_remote_hosts,
+            commands::ssh_remote::test_ssh_remote_host,
+            commands::ssh_remote::switch_ssh_only,
             // Additional commands
             commands::prepare_oauth_url,
             commands::start_oauth_login,

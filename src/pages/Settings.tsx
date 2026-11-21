@@ -12,6 +12,7 @@ import { cn } from '../utils/cn';
 import QuotaProtection from '../components/settings/QuotaProtection';
 import SmartWarmup from '../components/settings/SmartWarmup';
 import ClassicAutoSwitch from '../components/settings/ClassicAutoSwitch';
+import SshRemoteSettings from '../components/settings/SshRemoteSettings';
 import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
@@ -1185,6 +1186,25 @@ function Settings() {
 
 
                             {/* 经典款自动热切 */}
+                            {/* Remote SSH sync */}
+                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-violet-200 transition-all duration-300 shadow-sm">
+                                <SshRemoteSettings
+                                    config={formData.ssh_remote}
+                                    onChange={async (newConfig) => {
+                                        const newFormData = {
+                                            ...formData,
+                                            ssh_remote: newConfig
+                                        };
+                                        setFormData(newFormData);
+                                        try {
+                                            await saveConfig(newFormData);
+                                        } catch (error) {
+                                            showToast(`${t('common.error')}: ${error}`, 'error');
+                                        }
+                                    }}
+                                />
+                            </div>
+
                             <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-violet-200 transition-all duration-300 shadow-sm">
                                 <ClassicAutoSwitch
                                     config={formData.classic_auto_switch}
