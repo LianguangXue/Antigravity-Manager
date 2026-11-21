@@ -17,7 +17,8 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 const REMOTE_TOKEN_PATH: &str = "~/.gemini/jetski-standalone-oauth-token";
-const REMOTE_KILL_CMD: &str = "pkill -f '[a]ntigravity-hub-server/bin/.*/language_server' >/dev/null 2>&1 || true; \
+const REMOTE_KILL_CMD: &str =
+    "pkill -f '[a]ntigravity-hub-server/bin/.*/language_server' >/dev/null 2>&1 || true; \
 pkill -f '[a]gy --hub' >/dev/null 2>&1 || true; echo STOPPED";
 
 fn run_ssh(host: &str, remote_cmd: &str, stdin_data: Option<String>) -> Result<String, String> {
@@ -102,7 +103,7 @@ pub fn list_ssh_hosts() -> Vec<String> {
             if candidate.contains('*') || candidate.contains('?') || candidate.starts_with('!') {
                 continue;
             }
-            if !hosts.iter().any(|h| h == candidate) {
+            if !hosts.iter().any(|h| h.as_str() == candidate) {
                 hosts.push(candidate.to_string());
             }
         }
@@ -157,11 +158,10 @@ pub async fn restart_local_client() {
 
     tokio::time::sleep(std::time::Duration::from_millis(800)).await;
 
-    let started = tokio::task::spawn_blocking(|| {
-        crate::modules::process::start_antigravity(Some("classic"))
-    })
-    .await
-    .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
+    let started =
+        tokio::task::spawn_blocking(|| crate::modules::process::start_antigravity(Some("classic")))
+            .await
+            .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
 
     if let Err(e) = started {
         logger::log_warn(&format!(
@@ -214,10 +214,7 @@ pub async fn sync_after_switch(
                 "[SSH Remote] Credential pushed and language server stopped on {} for {}",
                 host, account.email
             )),
-            Err(e) => logger::log_warn(&format!(
-                "[SSH Remote] Sync failed on {}: {}",
-                host, e
-            )),
+            Err(e) => logger::log_warn(&format!("[SSH Remote] Sync failed on {}: {}", host, e)),
         }
 
         results.push((host, result));

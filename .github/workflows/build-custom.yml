@@ -54,7 +54,25 @@ jobs:
         run: npm run build
 
       - name: Build Tauri Windows NSIS Installer
-        run: npm run tauri build -- --bundles nsis
+        shell: pwsh
+        run: |
+          npm run tauri build -- --bundles nsis 2>&1 | Tee-Object -FilePath build.log
+          exit $LASTEXITCODE
+
+      - name: Publish build log on failure
+        if: failure()
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          tag: debug-${{ github.run_number }}
+          name: "Build log #${{ github.run_number }}"
+          body: "Build log for failed run ${{ github.run_number }}."
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "build.log"
+          artifactErrorsFailBuild: false
+          replacesArtifacts: true
+          prerelease: true
+          makeLatest: false
 
       - name: Collect installers
         shell: pwsh
