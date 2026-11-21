@@ -85,7 +85,7 @@ pub fn list_ssh_hosts() -> Vec<String> {
         return Vec::new();
     };
 
-    let mut hosts = Vec::new();
+    let mut hosts: Vec<String> = Vec::new();
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('#') {
@@ -114,7 +114,7 @@ pub fn list_ssh_hosts() -> Vec<String> {
 /// Verify that the given SSH host can be reached non-interactively.
 pub async fn test_host(host: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
-        run_ssh(&host, "echo SSH_REMOTE_OK").map(|out| out.trim().to_string())
+        run_ssh(&host, "echo SSH_REMOTE_OK", None).map(|out| out.trim().to_string())
     })
     .await
     .map_err(|e| format!("ssh test task failed: {}", e))?
@@ -135,7 +135,7 @@ echo PUSHED",
 }
 
 fn stop_remote_server(host: &str) -> Result<(), String> {
-    run_ssh(host, REMOTE_KILL_CMD)?;
+    run_ssh(host, REMOTE_KILL_CMD, None)?;
     Ok(())
 }
 
