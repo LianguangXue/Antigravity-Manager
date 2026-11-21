@@ -38,7 +38,8 @@ pub async fn switch_ssh_only(account_id: String) -> Result<String, String> {
         );
     }
 
-    let fresh = crate::modules::oauth::ensure_fresh_token(&account.token, Some(&account.id)).await?;
+    let fresh =
+        crate::modules::oauth::ensure_fresh_token(&account.token, Some(&account.id)).await?;
     if fresh.access_token != account.token.access_token {
         account.token = fresh;
         let _ = crate::modules::save_account(&account);
