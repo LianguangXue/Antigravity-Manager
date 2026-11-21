@@ -22,7 +22,7 @@ import ModalDialog from "../components/common/ModalDialog";
 import Pagination from "../components/common/Pagination";
 import AccountErrorDialog from "../components/accounts/AccountErrorDialog";
 import { showToast } from "../components/common/ToastContainer";
-import { exportAccounts } from "../services/accountService";
+import { exportAccounts, switchSshOnly } from "../services/accountService";
 import { useAccountStore } from "../stores/useAccountStore";
 import { useConfigStore } from "../stores/useConfigStore";
 import { Account, getAccountTier, ImportAccountEntry } from "../types/account";
@@ -384,8 +384,14 @@ function Accounts() {
     setSwitchingAccountId(accountId);
     console.log("[Accounts] handleSwitch called for:", accountId, "targetIde:", targetIde);
     try {
-      await switchAccount(accountId, targetIde);
-      showToast(t("common.success"), "success");
+      if (targetIde === "ssh") {
+        // SSH-only switch: push the credential to remote hosts, keep local account.
+        const message = await switchSshOnly(accountId);
+        showToast(message || t("common.success"), "success");
+      } else {
+        await switchAccount(accountId, targetIde);
+        showToast(t("common.success"), "success");
+      }
     } catch (error) {
       console.error("[Accounts] Switch failed:", error);
       showToast(`${t("common.error")}: ${error}`, "error");

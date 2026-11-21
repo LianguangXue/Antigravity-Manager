@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowRightLeft, Blocks, Repeat2, Terminal } from 'lucide-react';
+import { ArrowRightLeft, Blocks, Repeat2, Terminal, Server } from 'lucide-react';
 import type { ActiveClientsStatus } from '../../types/account';
 import { cn } from '../../utils/cn';
 
@@ -9,7 +9,7 @@ export interface AccountSwitchMenuProps {
     disabled?: boolean;
     isSwitching?: boolean;
     activeClients?: ActiveClientsStatus;
-    onSwitch: (target: 'classic' | 'ide' | 'acp' | 'agy') => void;
+    onSwitch: (target: 'classic' | 'ide' | 'acp' | 'agy' | 'ssh') => void;
     size?: 'sm' | 'md';
     className?: string;
 }
@@ -22,7 +22,7 @@ export interface AccountSwitchMenuProps {
  * 4. agy: AGY CLI
  */
 export const CLIENT_TARGETS: Array<{
-    id: 'classic' | 'ide' | 'acp' | 'agy';
+    id: 'classic' | 'ide' | 'acp' | 'agy' | 'ssh';
     labelKey: string;
     defaultLabel: string;
     descKey: string;
@@ -75,6 +75,17 @@ export const CLIENT_TARGETS: Array<{
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgClass: 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 border-emerald-200/80 dark:border-emerald-800/60',
         activeBorderClass: 'ring-1 ring-emerald-500',
+    },
+    {
+        id: 'ssh',
+        labelKey: 'accounts.actions_modal.clients.ssh_short',
+        defaultLabel: 'SSH',
+        descKey: 'accounts.actions_modal.clients.ssh_tooltip',
+        defaultDesc: '仅切换远程 SSH 主机账号（本地不变）',
+        icon: Server,
+        colorClass: 'text-cyan-600 dark:text-cyan-400',
+        bgClass: 'bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:hover:bg-cyan-900/50 border-cyan-200/80 dark:border-cyan-800/60',
+        activeBorderClass: 'ring-1 ring-cyan-500',
     },
 ];
 
@@ -135,7 +146,7 @@ export default function AccountSwitchMenu({
         };
     }, [isOpen]);
 
-    const handleSelectTarget = (target: 'classic' | 'ide' | 'acp' | 'agy') => {
+    const handleSelectTarget = (target: 'classic' | 'ide' | 'acp' | 'agy' | 'ssh') => {
         setIsOpen(false);
         onSwitch(target);
     };
@@ -162,7 +173,7 @@ export default function AccountSwitchMenu({
                     }
                 }}
                 disabled={disabled || isSwitching}
-                title={disabled ? t('accounts.disabled_tooltip') : (isSwitching ? t('common.loading') : t('accounts.switch_menu_tooltip', '选择切换目标客户端 (Antigravity / IDE / JEB / AGY CLI)'))}
+                title={disabled ? t('accounts.disabled_tooltip') : (isSwitching ? t('common.loading') : t('accounts.switch_menu_tooltip', '选择切换目标客户端 (Antigravity / IDE / JEB / AGY CLI / SSH)'))}
                 aria-expanded={isOpen}
             >
                 <Repeat2 className={cn(size === 'sm' ? "w-3 h-3" : "w-3.5 h-3.5", "flex-shrink-0", isSwitching && "animate-spin")} />

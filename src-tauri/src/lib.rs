@@ -878,6 +878,7 @@ pub fn run() {
             commands::ssh_remote::save_ssh_remote_config,
             commands::ssh_remote::list_ssh_remote_hosts,
             commands::ssh_remote::test_ssh_remote_host,
+            commands::ssh_remote::switch_ssh_only,
             // Additional commands
             commands::prepare_oauth_url,
             commands::start_oauth_login,
