@@ -141,34 +141,102 @@ fn stop_remote_server(host: &str) -> Result<(), String> {
 
 /// Restart the local Antigravity client so its SSH windows reconnect and start
 /// remote servers that read the freshly pushed credential.
+///
+/// The client is closed first (waiting until it is really gone, otherwise the
+/// new instance exits on the single-instance lock) and then started through the
+/// user's proxy launcher when present, so the proxy flags survive the restart.
 pub async fn restart_local_client() {
-    let closed = tokio::task::spawn_blocking(|| {
-        crate::modules::process::close_antigravity(8, Some("classic"))
+    let running = tokio::task::spawn_blocking(|| {
+        crate::modules::process::is_antigravity_running(Some("classic"))
     })
     .await
-    .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
+    .unwrap_or(false);
 
-    if let Err(e) = closed {
-        logger::log_warn(&format!(
-            "[SSH Remote] Failed to close Antigravity client before restart: {}",
-            e
-        ));
-        return;
+    if running {
+        let closed = tokio::task::spawn_blocking(|| {
+            crate::modules::process::close_antigravity(8, Some("classic"))
+        })
+        .await
+        .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
+
+        if let Err(e) = closed {
+            logger::log_warn(&format!(
+                "[SSH Remote] close Antigravity returned an error (continuing): {}",
+                e
+            ));
+        }
     }
 
-    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-
-    let started =
-        tokio::task::spawn_blocking(|| crate::modules::process::start_antigravity(Some("classic")))
-            .await
-            .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
-
-    if let Err(e) = started {
-        logger::log_warn(&format!(
-            "[SSH Remote] Failed to start Antigravity client after switch: {}",
-            e
-        ));
+    // Wait until the old process is really gone; a fast restart loses the
+    // single-instance lock race and the new instance exits immediately.
+    for _ in 0..12 {
+        let still_running = tokio::task::spawn_blocking(|| {
+            crate::modules::process::is_antigravity_running(Some("classic"))
+        })
+        .await
+        .unwrap_or(false);
+        if !still_running {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
     }
+
+    // Prefer the user's proxy launcher so `--proxy-server` is applied again.
+    let launcher = dirs::data_local_dir()
+        .map(|dir| {
+            dir.join("AntigravityProxy")
+                .join("launch-antigravity-proxy.vbs")
+        })
+        .filter(|path| path.is_file());
+
+    if let Some(launcher) = launcher {
+        let started = tokio::task::spawn_blocking(move || {
+            std::process::Command::new("wscript.exe")
+                .arg("//nologo")
+                .arg(&launcher)
+                .spawn()
+                .map(|_| ())
+                .map_err(|e| format!("failed to launch proxy launcher: {}", e))
+        })
+        .await
+        .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
+
+        if let Err(e) = started {
+            logger::log_warn(&format!("[SSH Remote] Proxy launcher failed: {}", e));
+        }
+    } else {
+        let started = tokio::task::spawn_blocking(|| {
+            crate::modules::process::start_antigravity(Some("classic"))
+        })
+        .await
+        .unwrap_or_else(|e| Err(format!("restart task failed: {}", e)));
+
+        if let Err(e) = started {
+            logger::log_warn(&format!(
+                "[SSH Remote] Failed to start Antigravity client after switch: {}",
+                e
+            ));
+            return;
+        }
+    }
+
+    // Give the client time to boot; log if it never comes up.
+    for _ in 0..14 {
+        let up = tokio::task::spawn_blocking(|| {
+            crate::modules::process::is_antigravity_running(Some("classic"))
+        })
+        .await
+        .unwrap_or(false);
+        if up {
+            logger::log_info(
+                "[SSH Remote] Antigravity client restarted; SSH windows will reconnect.",
+            );
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+    }
+
+    logger::log_warn("[SSH Remote] Antigravity client did not come back up after the switch.");
 }
 
 /// Push the account credential to every configured SSH host and stop its server.
